@@ -1,0 +1,62 @@
+# Configuration for replicating Neo et al. (ICLR 2025) on LiquidAI/LFM2.5-VL-3B.
+
+model_id: LiquidAI/LFM2.5-VL-3B
+device: cuda:0
+dtype: bfloat16
+
+# "eager" materialises an additive float attention mask, which attention knockout needs.
+# "sdpa" is faster and fine for ablation / logit-lens runs.
+attn_implementation: eager
+
+# Force a single visual-token grid per image. Typical COCO images (640x480) fall below
+# the splitting threshold anyway, so this costs nothing and keeps patch <-> token
+# mapping unambiguous.
+do_image_splitting: false
+
+# Visual-token budget, from the checkpoint's processor config. A 640x480 image lands
+# on a 13x18 = 234 token grid.
+min_image_tokens: 64
+max_image_tokens: 256
+
+# LM layers with attention, from text_config.layer_types. The other 22 of 30 are
+# Lfm2ShortConv and cannot be attention-blocked.
+attention_layers: [2, 5, 9, 13, 17, 21, 24, 27]
+num_layers: 30
+
+data:
+  # Root containing train2017/, val2017/ and annotations/.
+  coco_root: data/coco
+  split: train2017
+  clean_questions: data/clean_questions.json
+
+filters:
+  # Paper Section 3: at most 3 annotations, one instance of some category with area in
+  # this window. Tuned for LLaVA's 336x336 center crop; LFM2.5-VL sees ~416x576, so
+  # widen it if the post-filter set comes out too small.
+  area_window: [1000, 2000]
+  max_annotations: 3
+  # Paper Section 4.1 uses larger objects for the logit-lens measurement.
+  logit_lens_area_window: [20000, 30000]
+  logit_lens_num_images: 170
+
+ablation:
+  mean_vector: data/mean_visual_token_lfm2_5_vl_3b.pt
+  # Paper's counts. Anything above the ~234-token budget is capped, and the effective
+  # count is recorded per image in the results.
+  baseline_counts: [5, 10, 20, 40, 60, 100, 250]
+  buffers: [0, 1, 2]
+  integrated_gradient_steps: 50
+  max_images: 1000
+
+attention_knockout:
+  # Also run each attention layer alone and sliding windows of 3 across the 8.
+  per_layer_sweep: true
+  sliding_window: 3
+  # Control for short-conv leakage: 22 conv layers x 2 positions each can carry
+  # information ~44 positions forward regardless of attention masking.
+  distance_control: true
+  distance_control_padding: 60
+
+paths:
+  results_dir: results
+  logit_lens_dir: results/logit_lens

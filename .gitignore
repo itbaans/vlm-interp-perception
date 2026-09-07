@@ -1,0 +1,30 @@
+# Experiment outputs
+results/
+
+# Reference implementation (not part of this project)
+llava-interp-main/
+
+# Papers / large binaries
+*.pdf
+*.zip
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.npz
+
+# Datasets
+**/data/coco/
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.ipynb_checkpoints/

@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# COCO images and annotations (19 GB) -- fetch with the commands in README.md.
+data/coco/
+
+# Experiment outputs and the computed mean visual token.
+results/
+data/*.pt

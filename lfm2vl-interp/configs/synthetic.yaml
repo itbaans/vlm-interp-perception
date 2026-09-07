@@ -1,0 +1,48 @@
+# Configuration for the synthetic perception-probing experiments.
+#
+# Unlike the COCO replication this suite needs no dataset download at all: scenes are
+# generated deterministically from `synthetic.seed`.
+
+model_id: LiquidAI/LFM2.5-VL-3B
+device: cuda:0
+dtype: bfloat16
+
+# "eager" is required for attention knockout; activation patching and the lenses work
+# under either, and "sdpa" is faster.
+attn_implementation: sdpa
+
+# Scenes are 512x512, the one size that survives smart_resize untouched and gives a clean
+# 16x16 = 256 visual-token grid at exactly 32px per cell. Never enable splitting here.
+do_image_splitting: false
+
+synthetic:
+  tasks: [count, colour, shape, orientation, relation]
+  levels: [L1, L2, L3, L4, L5]
+  per_cell: 40
+  seed: 0
+
+# LM layers with attention, from text_config.layer_types. The other 22 of 30 are
+# Lfm2ShortConv. Activation patching reaches all 30; knockout only these 8.
+attention_layers: [2, 5, 9, 13, 17, 21, 24, 27]
+num_layers: 30
+
+patching:
+  # Token groups spliced from the clean run into the counterfactual run.
+  groups: [changed, targets, distractors, background, image_start, image_end, question, last]
+  # After the coarse layer x group sweep, patch each visual token individually at the
+  # best few layers to get a spatial recovery map.
+  fine_pass_layers: 3
+  # The fine pass is ~3x the coarse sweep per sample (3 layers x 256 tokens vs 8 groups
+  # x 30 layers), and only produces the spatial maps. Cap it: the layer x group result
+  # that is the actual finding comes from every sample regardless.
+  fine_samples: 12
+  max_samples: 60
+
+lens:
+  # Only localize on samples the model answers correctly unablated.
+  correct_only: true
+
+paths:
+  results_dir: results/synthetic
+  viewer: results/synthetic/viewer.html
+  figures_dir: results/synthetic/figures
